@@ -1,0 +1,54 @@
+version: '3.6'
+
+services:
+  worker-master:
+    build:
+      dockerfile: ./worker.dockerfile
+      args:
+        MICROSERVICE_NAME: ${MICROSERVICE_NAME1}
+    container_name: ${CONTAINER_NAME1}
+    environment:
+      - WorkerSlaveAdress=http://${CONTAINER_NAME2}:${MICROSERVICE_PORT2}
+      - RabbitMqConnectionString=${RABBITMQ_CONNECTION_STRING}
+      - CalculationsCount=${CALCULATIONS_COUNT}
+    ports:
+      - ":${MICROSERVICE_PORT1}"
+    depends_on:
+      - worker-slave
+      - rabbitmq
+    links:
+      - rabbitmq
+    networks:
+      - workers_network
+
+  worker-slave:
+    build:
+      dockerfile: ./worker.dockerfile
+      args:
+        MICROSERVICE_NAME: ${MICROSERVICE_NAME2}
+    container_name: ${CONTAINER_NAME2}
+    environment:
+      - ExposedPort=${MICROSERVICE_PORT2}
+      - RabbitMqConnectionString=${RABBITMQ_CONNECTION_STRING}
+    ports:
+      - ":${MICROSERVICE_PORT2}"
+    depends_on:
+      - rabbitmq
+    networks:
+      - workers_network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    expose:
+      - 15672
+      - 5672
+    networks:
+      - workers_network
+
+networks:
+  workers_network:
+    driver: bridge
